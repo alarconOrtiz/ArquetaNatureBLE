@@ -67,25 +67,24 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
         mHandlerBLE = ((BLE_Application) getApplication()).getmHandlerBLEInstance(this);
         ((BLE_Application) getApplication()).resetHandlerBLE();
 
-        mScanBroadcastReceiver = new BLEBroadcastReceiver(this, mAdapter);
-        //mScanBroadcastReceiver = new BLEBroadcastReceiver();
-
-        //IntentFilter i = new IntentFilter(HandlerBLE.ACTION_DEVICE_ADVERTISING);
-        //registerReceiver(mScanBroadcastReceiver, i);
-
-        //run service
-        //Intent service = new Intent(this, ServiceDetectionTag.class);
-        //startService(service);
-
-
-        //checking if blue is enable.
+        //checking if bluetooth is enable.
         if(mHandlerBLE.IsEnabledBlue())
         {
             Intent enableBlue = new Intent(mHandlerBLE.getBlueAdapter().ACTION_REQUEST_ENABLE);
             startActivity(enableBlue);
-            finish();
+            //finish();
             return;
         }
+
+        mScanBroadcastReceiver = new BLEBroadcastReceiver(this, mAdapter);
+        //mScanBroadcastReceiver = new BLEBroadcastReceiver();
+
+        IntentFilter i = new IntentFilter(HandlerBLE.ACTION_DEVICE_ADVERTISING);
+        registerReceiver(mScanBroadcastReceiver, i);
+
+        //run service
+        //Intent service = new Intent(this, ServiceDetectionTag.class);
+        //startService(service);
 
         mListView = getListView();
         mListView.setVisibility(View.VISIBLE);
@@ -138,9 +137,14 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
     {
         super.onResume();
 
+        //restart broadcaster
+        mScanBroadcastReceiver = new BLEBroadcastReceiver(this, mAdapter);
+        IntentFilter i = new IntentFilter(HandlerBLE.ACTION_DEVICE_ADVERTISING);
+        registerReceiver(mScanBroadcastReceiver,i);
+
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE))
         {
-            Toast.makeText(this, "BLE TECHNOLOGY NOT SUPPORTED ON THIS DEVICE", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Tecnología BLE no está soportado por este dispositivo.", Toast.LENGTH_SHORT).show();
             finish();
         }
 
@@ -153,7 +157,7 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
     @Override
     protected void onPause() {
         super.onPause();
-        mListView.setOnClickListener(null);
+
         //Make sure that there is no pending Callback
         mHandler.removeCallbacks(mStopRunnable);
 
@@ -161,8 +165,8 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
         //Intent service = new Intent(this, ServiceDetectionTag.class);
         //stopService(service);
 
-        //if(mScanBroadcastReceiver != null)
-        //    unregisterReceiver(mScanBroadcastReceiver);
+        if(mScanBroadcastReceiver != null)
+            unregisterReceiver(mScanBroadcastReceiver);
 
         mAdapter.clear();
 
@@ -180,8 +184,6 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
         //stop service
         //Intent service = new Intent(this, ServiceDetectionTag.class);
         //stopService(service);
-
-        isOncreate = false;
 
     }
 

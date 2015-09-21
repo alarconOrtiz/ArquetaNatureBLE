@@ -9,4 +9,6 @@
     <string name="title_activity_sensor">SensorActivity</string>
     <string name="title_activity_resumen">ResumenActivity</string>
     <string name="title_activity_parameters_device">ParametersDeviceActivity</string>
+    <string name="title_activity_outside_chamber">OutsideChamberActivity</string>
+    <string name="title_activity_inside_chamber">InsideChamberActivity</string>
 </resources>

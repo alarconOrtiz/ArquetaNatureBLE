@@ -24,8 +24,8 @@ public class HandlerBLE implements LeScanCallback
     public static final String ACTION_DEVICE_ADVERTISING      = "es.alarcon.arquetanatureble.DEVICE_FOUND";
     public static final String ACTION_DEVICE_ADVERTISING_DATA = "es.alarcon.arquetanatureble.ADVERTISING_DATA";
 
-    public static final int SELEC_ACTION_DEVICE_ADVERTISING         = 0;
-    public static final int SELEC_ACTION_DEVICE_ADVERTISING_DATA    = 1;
+    public static final int SELECT_ACTION_DEVICE_ADVERTISING         = 0;
+    public static final int SELECT_ACTION_DEVICE_ADVERTISING_DATA    = 1;
 
     private static HandlerBLE mHandlerBLE;
     private static List<ServiceType> mServices;
@@ -208,10 +208,10 @@ public class HandlerBLE implements LeScanCallback
 
         switch (mselecActionDevice)
         {
-            case SELEC_ACTION_DEVICE_ADVERTISING:
+            case SELECT_ACTION_DEVICE_ADVERTISING:
                 intent.setAction(HandlerBLE.ACTION_DEVICE_ADVERTISING);
                 break;
-            case SELEC_ACTION_DEVICE_ADVERTISING_DATA:
+            case SELECT_ACTION_DEVICE_ADVERTISING_DATA:
                 intent.setAction(HandlerBLE.ACTION_DEVICE_ADVERTISING_DATA);
                 break;
             default:

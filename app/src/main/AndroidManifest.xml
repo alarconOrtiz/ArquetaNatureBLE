@@ -11,7 +11,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
-
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -48,13 +47,25 @@
         <activity
             android:name=".GUI.ResumenActivity"
             android:label="@string/title_activity_resumen"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait" >
         </activity>
         <activity
             android:name=".GUI.ParametersDeviceActivity"
             android:label="@string/title_activity_parameters_device"
+            android:screenOrientation="portrait" >
+        </activity>
+
+        <activity
+            android:name=".GUI.OutsideChamberActivity"
+            android:label="@string/title_activity_outside_chamber"
             android:screenOrientation="portrait">
         </activity>
+        <activity
+            android:name=".GUI.InsideChamberActivity"
+            android:label="@string/title_activity_inside_chamber"
+            android:screenOrientation="portrait">
+        </activity>
+
         <receiver
             android:name=".BroadCastReceiver.BLEBroadcastReceiver"
             android:enabled="true" >
@@ -73,7 +84,5 @@
                 <action android:name="es.alarcon.arquetanatureble.NOTIFY_NEW_DEVICE" />
             </intent-filter>
         </receiver>
-
     </application>
-
 </manifest>

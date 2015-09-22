@@ -182,7 +182,7 @@ public class HandlerBLE implements LeScanCallback
                 mGatt.close();
                 if (Constant.DEBUG)
                     Log.i(Constant.TAG, "(HandlerBLE)Disconnecting GATT");
-            } catch(Exception ex){};
+            } catch(Exception ex){}
         }
         mGatt = null;
     }

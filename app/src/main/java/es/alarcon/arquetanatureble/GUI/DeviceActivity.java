@@ -67,7 +67,7 @@ public class DeviceActivity extends Activity implements View.OnClickListener
         //handler BLE
         mHandlerBLE = ((BLE_Application) getApplication()).getmHandlerBLEInstance(this);
         ((BLE_Application) getApplication()).resetHandlerBLE();
-        mHandlerBLE.setMselecActionDevice(HandlerBLE.SELECT_ACTION_DEVICE_ADVERTISING_DATA);
+        mHandlerBLE.setMselecActionDevice(mHandlerBLE.SELECT_ACTION_DEVICE_ADVERTISING_DATA);
 
         //Select type of device
         mDeviceAddress=getIntent().getStringExtra(Constant.EXTRA_ADDRESS);

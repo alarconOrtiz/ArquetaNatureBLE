@@ -49,11 +49,6 @@
             android:label="@string/title_activity_resumen"
             android:screenOrientation="portrait" >
         </activity>
-        <activity
-            android:name=".GUI.ParametersDeviceActivity"
-            android:label="@string/title_activity_parameters_device"
-            android:screenOrientation="portrait" >
-        </activity>
 
         <activity
             android:name=".GUI.OutsideChamberActivity"

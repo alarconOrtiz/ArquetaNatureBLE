@@ -1,10 +1,9 @@
-package es.alarcon.arquetanatureble.DB;
+package es.alarcon.arquetanatureble.DB_SQLITE;
 
 import android.util.Log;
 
 import java.sql.ResultSet;
 
-import es.alarcon.arquetanatureble.BEAN.BeanTableDevices;
 import es.alarcon.arquetanatureble.UTIL.Constant;
 
 
@@ -13,8 +12,6 @@ import es.alarcon.arquetanatureble.UTIL.Constant;
  */
 public class ChamberDB extends BBDDMySQL
 {
-
-
     //data to table db
     public static final String NAME_DATABASE             = "IoT_teleNature";
     public static final String NAME_TABLE_DEVICES        = "info_Arqueta";
@@ -38,14 +35,14 @@ public class ChamberDB extends BBDDMySQL
         //preparing sentence.
         String sql = "SELECT * FROM "+NAME_TABLE_DEVICES+" WHERE UUID ="+UUID+";";
         ResultSet rs = this.ExecuteQuery(sql);
-        getParametersDevice(rs);
+        //getParametersDevice(rs);
         this.CloseResultset(rs);
     }
 
-    private BeanTableDevices getParametersDevice(ResultSet rs)
+   /* private BeanInfoArquetaDB getParametersDevice(ResultSet rs)
     {
         return null;
-    }
+    }*/
 
     public boolean InsertDataDevice(String address, float value)
     {

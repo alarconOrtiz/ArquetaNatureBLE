@@ -31,24 +31,25 @@ import es.alarcon.arquetanatureble.R;
 public class MyNotificationHandler
 {
     //private Notification mNotification;
-    private NotificationManager mNotificationManager;
-    private Service mService;
+    private static NotificationManager mNotificationManager;
 
-    private NotificationCompat.Builder mNotification;
-    private PendingIntent pIntent;
-    private Intent resultIntent;
-    private TaskStackBuilder stackBuilder;
+    private static NotificationCompat.Builder mNotification;
+    private static PendingIntent pIntent;
+    private static Intent resultIntent;
+    private static TaskStackBuilder stackBuilder;
+
+    private static Context mContext;
 
     public static final String NOTIFICACION_MESSAGE   = "Nuevo Dispositivo encontrado.";
     public static final String NOTIFICACION_TITLE     = "DISPOSITIVO: Arqueta";
-    public static final String NOTIFICACION_TICKER    ="Nueva Arqueta detectada.";
+    public static final String NOTIFICACION_TICKER    = "Nueva Arqueta detectada.";
     public static final int NOTIFICATION_ID           = 1100;
 
-    public MyNotificationHandler(Service service)
+    public MyNotificationHandler(Context context)
     {
         super();
         //mNotification        = new Notification();
-        mService             = service;
+        mContext               = context;
     }
 
     public void SendNotify()
@@ -59,7 +60,7 @@ public class MyNotificationHandler
         mNotificationManager.notify(NOTIFICATION_ID, notification);*/
 
         startNotification();
-        mNotificationManager = (NotificationManager) mService.getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager = (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.notify(NOTIFICATION_ID, mNotification.build());
     }
 
@@ -67,7 +68,7 @@ public class MyNotificationHandler
     protected void startNotification()
     {
         //Creating Notification Builder
-        mNotification = new NotificationCompat.Builder(mService.getBaseContext());
+        mNotification = new NotificationCompat.Builder(mContext);
         //Title for Notification
         mNotification.setContentTitle(NOTIFICACION_MESSAGE);
         //Message in the Notification
@@ -75,18 +76,18 @@ public class MyNotificationHandler
         //Alert shown when Notification is received
         mNotification.setTicker(NOTIFICACION_TICKER);
         //Icon to be set on Notification
-        mNotification.setSmallIcon(R.drawable.abc_btn_radio_material);
+        mNotification.setSmallIcon(R.mipmap.ic_launcher);
 
         //Creating new Stack Builder
-        stackBuilder = TaskStackBuilder.create(mService.getBaseContext());
+        stackBuilder = TaskStackBuilder.create(mContext);
         stackBuilder.addParentStack(ScanActivity.class);
         //Intent which is opened when notification is clicked
-        resultIntent = new Intent(mService.getBaseContext(), ScanActivity.class);
+        resultIntent = new Intent(mContext, ScanActivity.class);
         stackBuilder.addNextIntent(resultIntent);
         pIntent =  stackBuilder.getPendingIntent(0,PendingIntent.FLAG_UPDATE_CURRENT);
+        mNotification.setAutoCancel(true);
         mNotification.setContentIntent(pIntent);
     }
-
     //old implementation
     /*
     private Notification CreateNotification()

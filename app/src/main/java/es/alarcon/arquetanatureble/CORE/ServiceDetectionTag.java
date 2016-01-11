@@ -22,161 +22,72 @@ import es.alarcon.arquetanatureble.UTIL.Constant;
 /**
  * Created by alarcon on 4/7/15.
  */
-public class ServiceDetectionTag extends IntentService {
+public class ServiceDetectionTag extends Service {
     private static final String NAMECLASS = "ServiceDetectionTag";
     private static final long STOP_SCAN_TIMER = 10 * 1000;
     private static final long START_SCAN_TIMER = 30 * 1000;
-    private static boolean isScanning;
 
-    private HandlerBLE mHandlerBLE;
-    private ServiceDetectionTag mServiceDetectionTag;
-    private ServiceBroadcastReceiver mServiceBroadcastReceiver;
+    private static Context mContext;
+    private static HandlerBLE mHandlerBLE;
+    private static ServiceBroadcastReceiver mServiceBroadcastReceiver;
     private static Thread workerThread = null;
+    private static Boolean alive;
 
-    public ServiceDetectionTag() {
-        super(NAMECLASS);
-    }
-
-    @Override
-    protected void onHandleIntent(Intent intent)
+    public ServiceDetectionTag()
     {
-        mHandlerBLE = ((BLE_Application) getApplication()).getmHandlerBLEInstance(this.getApplicationContext());
-        ((BLE_Application) getApplication()).resetHandlerBLE();
-
-
-        mServiceBroadcastReceiver = new ServiceBroadcastReceiver();
-        IntentFilter i = new IntentFilter(ServiceBroadcastReceiver.ACTION_NOTIFY_NEW_DEVICE_FOUND);
-        registerReceiver(mServiceBroadcastReceiver, i);
-
-        if(workerThread == null || !workerThread.isAlive())
-        {
-            workerThread = new Thread(new Runnable()
-            {
-                public void run()
-                {
-
-                    Timer mTimerStart = new Timer();
-                    Timer mTimerStop = new Timer();
-
-                    mTimerStart.scheduleAtFixedRate(new TimerTask() {
-                        @Override
-                        public void run()
-                        {
-                            if (Constant.DEBUG)
-                                Log.i(Constant.TAG, NAMECLASS + "-- onHandleIntent -> Start scanning");
-                            mHandlerBLE.startLeScan();
-                        }
-                    }, 0, START_SCAN_TIMER + STOP_SCAN_TIMER);
-
-                    mTimerStop.scheduleAtFixedRate(new TimerTask() {
-                        @Override
-                        public void run()
-                        {
-                            if (Constant.DEBUG)
-                                Log.i(Constant.TAG, NAMECLASS + "-- onHandleIntent -> Stop scanning");
-                            mHandlerBLE.stopLeScan();
-                        }
-                    }, 0, START_SCAN_TIMER);
-                }
-            });
-            workerThread.start();
-        }
+        super();
     }
 
-    @Override
-    public void onDestroy() {
-        if (Constant.DEBUG)
-            Log.i(Constant.TAG, NAMECLASS + " -- onDestroy() -> Stop scanning");
+    /*private volatile Timer mTimerStart;
+    private volatile Timer mTimerStop;*/
 
-        mHandlerBLE.stopLeScan();
-        unregisterReceiver(mServiceBroadcastReceiver);
-
-        super.onDestroy();
+    public static Boolean isAlive()
+    {
+        return alive;
     }
 
-    public class ServiceBroadcastReceiver extends BroadcastReceiver {
-        public static final String ACTION_NOTIFY_NEW_DEVICE_FOUND = "pfc.teleco.upct.es.iot_ble.NOTIFY_NEW_DEVICE";
-
-        public ServiceBroadcastReceiver() {
-            super();
-        }
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (Constant.DEBUG)
-                Log.i(Constant.TAG, "ServiceBroadcastReceiver -- onReceive -> inside");
-            String action = intent.getAction();
-            if (action.equals(ServiceBroadcastReceiver.ACTION_NOTIFY_NEW_DEVICE_FOUND)) {
-                if (Constant.DEBUG)
-                    Log.i(Constant.TAG, "ServiceBroadcastReceiver -- onReceive -> sending notication(statusBar)");
-
-
-                MyNotificationHandler myNotificationHandler;
-                myNotificationHandler = new MyNotificationHandler(mServiceDetectionTag);
-                myNotificationHandler.SendNotify();
-            }
-        }
-
-    }
-/*
     @Override
     public void onCreate() {
         super.onCreate();
 
-        mServiceDetectionTag = this;
-
+        alive = true;
         mHandlerBLE = ((BLE_Application) getApplication()).getmHandlerBLEInstance(this.getApplicationContext());
         ((BLE_Application) getApplication()).resetHandlerBLE();
+        mContext = getApplicationContext();
 
         mServiceBroadcastReceiver = new ServiceBroadcastReceiver();
         IntentFilter i = new IntentFilter(ServiceBroadcastReceiver.ACTION_NOTIFY_NEW_DEVICE_FOUND);
         registerReceiver(mServiceBroadcastReceiver, i);
 
-        mHandler = new Handler();
-        mTimer = new Timer(true);
-
-        Timer mTimer2 = new Timer();
-
-        mTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-
-                if (Constant.DEBUG)
-                    Log.i(Constant.TAG, NAMECLASS + " -- Start scanning");
-                mHandlerBLE.startLeScan();
-                isScanning = true;
-            }
-        }, 0, SCAN_TIMER);
-    }
-
-
-    //Handle automatic stop of LEScan
-    private Runnable mStopRunnable = new Runnable() {
-        @Override
-        public void run() {
-            mHandlerBLE.stopLeScan();
-            isScanning = false;
-            if (Constant.DEBUG)
-                Log.i(Constant.TAG, NAMECLASS+" Stop scanning");
-        }
-    };
-
-
-    @Override
-    public void onStart(Intent intent, int startid) {
-
-    }
-
-
-    @Override
-    public void onDestroy() {
         if (Constant.DEBUG)
-            Log.i(Constant.TAG, NAMECLASS + " -- onDestroy() -> Stop scanning");
+            Log.i(Constant.TAG, NAMECLASS + " ## -- Init Proccess");
 
-        mHandlerBLE.stopLeScan();
-        unregisterReceiver(mServiceBroadcastReceiver);
+            workerThread = new Thread(new Runnable() {
+                public void run()
+                {
+                        while (isAlive())
+                        {
+                            try
+                            {
+                                if (Constant.DEBUG)
+                                    Log.i(Constant.TAG, NAMECLASS + " ## -- onCreate -> Start scanning");
 
-        super.onDestroy();
+                                mHandlerBLE.startLeScan();
+                                workerThread.sleep(START_SCAN_TIMER);
+
+                                if (Constant.DEBUG)
+                                    Log.i(Constant.TAG, NAMECLASS + " ## -- onCreate -> Stop scanning");
+                                mHandlerBLE.stopLeScan();
+                                workerThread.sleep(STOP_SCAN_TIMER);
+
+                            }
+                            catch (Exception e)
+                            {
+                                e.printStackTrace();
+                            }
+                        }
+                }});
+                workerThread.start();
     }
 
     @Nullable
@@ -186,33 +97,46 @@ public class ServiceDetectionTag extends IntentService {
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        return super.onStartCommand(intent, flags, startId);
+    public void onDestroy ()
+    {
+        alive = false;
 
+        if (Constant.DEBUG)
+            Log.i(Constant.TAG, NAMECLASS + " ## -- onDestroy -> Stop scanning");
+        mHandlerBLE.stopLeScan();
+
+        try {
+            workerThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        unregisterReceiver(mServiceBroadcastReceiver);
+        super.onDestroy();
     }
-
-    public class ServiceBroadcastReceiver extends BroadcastReceiver {
-        public static final String ACTION_NOTIFY_NEW_DEVICE_FOUND = "pfc.teleco.upct.es.iot_ble.NOTIFY_NEW_DEVICE";
-
-        public ServiceBroadcastReceiver() {
-            super();
-        }
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (Constant.DEBUG)
-                Log.i(Constant.TAG, "ServiceBroadcastReceiver -- onReceive -> inside");
-            String action = intent.getAction();
-            if (action.equals(ServiceBroadcastReceiver.ACTION_NOTIFY_NEW_DEVICE_FOUND)) {
+    //#############################################################################################
+    //#############################################################################################
+    public static class ServiceBroadcastReceiver extends BroadcastReceiver {
+            public static final String ACTION_NOTIFY_NEW_DEVICE_FOUND = "es.alarcon.arquetanatureble.NOTIFY_NEW_DEVICE";
+            public ServiceBroadcastReceiver(){}
+            @Override
+            public void onReceive(Context context, Intent intent) {
                 if (Constant.DEBUG)
-                    Log.i(Constant.TAG, "ServiceBroadcastReceiver -- onReceive -> sending notication(statusBar)");
+                    Log.i(Constant.TAG, " ## ServiceBroadcastReceiver(Listener) -- onReceive ");
+                String action = intent.getAction();
+                if (action.equals(ServiceBroadcastReceiver.ACTION_NOTIFY_NEW_DEVICE_FOUND)) {
 
+                    if(mContext != null )
+                    {
+                        if (Constant.DEBUG)
+                            Log.i(Constant.TAG, " ## ServiceBroadcastReceiver -- onReceive -> sending notication(statusBar)");
 
-                MyNotificationHandler myNotificationHandler;
-                myNotificationHandler = new MyNotificationHandler(mServiceDetectionTag);
-                myNotificationHandler.SendNotify();
+                        MyNotificationHandler myNotificationHandler;
+                        myNotificationHandler = new MyNotificationHandler(mContext);
+                        myNotificationHandler.SendNotify();
+                    }
+                }
             }
-        }
 
-    }*/
+        }
 }

@@ -2,7 +2,6 @@ package es.alarcon.arquetanatureble.GUI;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.ListActivity;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
@@ -23,16 +22,16 @@ import java.util.List;
 
 
 import es.alarcon.arquetanatureble.BEAN.BeanBluetoothDevice;
+import es.alarcon.arquetanatureble.BLE.BLEBroadcastReceiver;
 import es.alarcon.arquetanatureble.BLE.HandlerBLE;
-import es.alarcon.arquetanatureble.BroadCastReceiver.BLEBroadcastReceiver;
-import es.alarcon.arquetanatureble.CORE.ServiceDetectionTag;
 
 import es.alarcon.arquetanatureble.CORE.BLE_Application;
+import es.alarcon.arquetanatureble.CORE.ServiceDetectionTag;
 import es.alarcon.arquetanatureble.R;
 import es.alarcon.arquetanatureble.UTIL.Constant;
 
 
-public class ScanActivity extends ListActivity implements OnItemClickListener{ //}, LeScanCallback {
+public class ScanActivity extends Activity implements OnItemClickListener { //}, LeScanCallback {
 
     private static final int SCAN_ITEM = 1;
     private static ListView mListView;
@@ -45,7 +44,6 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
     private static Activity mActivity;
     private BLEBroadcastReceiver mScanBroadcastReceiver;
     public static boolean isOncreate = false;
-
 
     //###################################################################
     /****************** metodos del flujo Android. **********************/
@@ -67,26 +65,14 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
         mHandlerBLE = ((BLE_Application) getApplication()).getmHandlerBLEInstance(this);
         ((BLE_Application) getApplication()).resetHandlerBLE();
 
-        //checking if bluetooth is enable.
-        if(mHandlerBLE.IsEnabledBlue())
-        {
-            Intent enableBlue = new Intent(mHandlerBLE.getBlueAdapter().ACTION_REQUEST_ENABLE);
-            startActivity(enableBlue);
-            //finish();
-            return;
-        }
-
         mScanBroadcastReceiver = new BLEBroadcastReceiver(this, mAdapter);
-        //mScanBroadcastReceiver = new BLEBroadcastReceiver();
 
-        IntentFilter i = new IntentFilter(HandlerBLE.ACTION_DEVICE_ADVERTISING);
-        registerReceiver(mScanBroadcastReceiver, i);
+        /*IntentFilter i = new IntentFilter(HandlerBLE.ACTION_BLE_FOUND);
+        registerReceiver(mScanBroadcastReceiver, i);*/
 
-        //run service
-        //Intent service = new Intent(this, ServiceDetectionTag.class);
-        //startService(service);
 
-        mListView = getListView();
+        //mListView = getListView();
+        mListView = (ListView) findViewById(R.id.listView);
         mListView.setVisibility(View.VISIBLE);
 
         mListView.setAdapter(mAdapter);
@@ -99,7 +85,7 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
     {
         super.onCreateOptionsMenu(menu);
         mMenu = menu;
-        String menuTitle= getResources().getString(R.string.scan);
+        String menuTitle = getResources().getString(R.string.scan);
         menu.add(0,SCAN_ITEM,0,menuTitle);
 
        /*
@@ -139,7 +125,7 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
 
         //restart broadcaster
         mScanBroadcastReceiver = new BLEBroadcastReceiver(this, mAdapter);
-        IntentFilter i = new IntentFilter(HandlerBLE.ACTION_DEVICE_ADVERTISING);
+        IntentFilter i = new IntentFilter(HandlerBLE.ACTION_BLE_FOUND);
         registerReceiver(mScanBroadcastReceiver,i);
 
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE))
@@ -148,7 +134,20 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
             finish();
         }
 
-        //isOncreate = false;
+        //checking if bluetooth is enable.
+        if(!mHandlerBLE.IsEnabledBlue())
+        {
+            Intent enableBlue = new Intent(mHandlerBLE.getBlueAdapter().ACTION_REQUEST_ENABLE);
+            startActivity(enableBlue);
+            finish();
+            return;
+        }
+
+        Log.d(Constant.TAG,"#>> onResume : Stopping service.");
+        //stop service
+        Intent service = new Intent(this, ServiceDetectionTag.class);
+        stopService(service);
+
         mAdapter.clear();
         HandlerBLE.setup();
     }
@@ -161,14 +160,11 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
         //Make sure that there is no pending Callback
         mHandler.removeCallbacks(mStopRunnable);
 
-        //stop service
-        //Intent service = new Intent(this, ServiceDetectionTag.class);
-        //stopService(service);
-
         if(mScanBroadcastReceiver != null)
             unregisterReceiver(mScanBroadcastReceiver);
 
         mAdapter.clear();
+        mAdapter.notifyDataSetChanged();
 
         isOncreate = false;
 
@@ -178,12 +174,24 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
     }
 
     @Override
+    protected void onDestroy() {
+
+        //stop service
+        Intent service = new Intent(this, ServiceDetectionTag.class);
+        stopService(service);
+
+        super.onDestroy();
+    }
+    @Override
     protected void onStop()
     {
         super.onStop();
-        //stop service
-        //Intent service = new Intent(this, ServiceDetectionTag.class);
-        //stopService(service);
+
+        Log.d(Constant.TAG, "#>> onStop : Running service.");
+
+        //Run service
+        Intent service = new Intent(this, ServiceDetectionTag.class);
+        startService(service);
 
     }
 
@@ -194,13 +202,11 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
     //recogemos los metodos del tag seleccionado y recogemos los datos.
     public void onItemClick(AdapterView<?> parent, View view, int position, long id)
     {
-         /*
+
         //stop service
         Intent service = new Intent(this, ServiceDetectionTag.class);
         stopService(service);
-        */
 
-        //unregisterReceiver(mScanBroadcastReceiver);
 
         if (Constant.DEBUG)
             Log.i(Constant.TAG, "Selected device " + mDeviceList.get(position).getBluetoothDevice().getAddress());
@@ -219,9 +225,12 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
         if (name==null)
             name="unknown";
 
-        Intent intentActivity= new Intent(this, DeviceActivity.class);
-        intentActivity.putExtra(Constant.EXTRA_ADDRESS, address);
-        intentActivity.putExtra(Constant.EXTRA_NAME, name);
+        BeanBluetoothDevice beanBlue = (BeanBluetoothDevice) mAdapter.getItem(position);
+
+        Intent intentActivity= new Intent(this, OutsideChamberActivity.class);
+        intentActivity.putExtra(Constant.EXTRA_BEAN_BLUETOOTHDEVICE,beanBlue);
+        //intentActivity.putExtra(Constant.EXTRA_ADDRESS, address);
+        //intentActivity.putExtra(Constant.EXTRA_NAME, name);
         this.startActivity(intentActivity);
 
     }
@@ -230,24 +239,26 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
     private Runnable mStopRunnable = new Runnable() {
         @Override
         public void run() {
-            mHandlerBLE.stopLeScan();
             configureScan(false);
             if (Constant.DEBUG)
                 Log.i(Constant.TAG, "Stop scanning");
+
         }
     };
 
     public void configureScan(boolean flag)
     {
-        //isScanning      = flag;
         String itemText = null;
 
-        if (mHandlerBLE.isScanning)
+        if (!flag)
         {
+
             itemText = getResources().getString(R.string.stopScan);
             mHandlerBLE.stopLeScan();
+
             if (Constant.DEBUG)
                 Log.i(Constant.TAG, "ScanActivity -- StopScan");
+
         }
         else
         {
@@ -266,14 +277,14 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
 
     // Metodo para iniciar el scaneo cuando te llaman manualmente.
     private void scan() {
-        if (mHandlerBLE.isScanning) { //stop scanning
+        Boolean flag = mMenu.findItem(SCAN_ITEM).getTitle().equals(R.string.stopScan)?true:false;
+        if (flag) { //stop scanning
+
             configureScan(false);
-            mHandlerBLE.stopLeScan();
 
             if (Constant.DEBUG)
                 Log.i(Constant.TAG, "Stop scanning");
 
-            return;
         } else {
             mAdapter.clear();
             mAdapter.notifyDataSetChanged();
@@ -282,32 +293,12 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
             if (Constant.DEBUG)
                 Log.i(Constant.TAG, "Start scanning for BLE devices...");
 
-            mHandlerBLE.startLeScan();
             //automatically stop LE scan after 5 seconds
             mHandler.postDelayed(mStopRunnable, 30000);
         }
     }
 
-
-    /*
-    Clase para crear el adaptador de dispositos Bluetooh
-     */
-   /* public class MySimpleArrayAdapter extends ArrayAdapter {
-        private final Context context;
-
-        public MySimpleArrayAdapter(Context context, List<BluetoothDevice> deviceList)
-        {
-            super(context, R.layout.activity_scan_item,R.id.deviceName, deviceList);
-            this.context = context;
-        }
-    }*/
-
-    public static ScanActivity GetScanActivity()
-    {
-        return (ScanActivity) mActivity;
-    }
-
-    public void addNewDevice2MySimpleArrayAdapter(BeanBluetoothDevice beanDeviceFound) {
+    public void addNewDevice2MySimpleArrayAdapter(final BeanBluetoothDevice beanDeviceFound) {
 
         final BluetoothDevice deviceFound = beanDeviceFound.getBluetoothDevice();
         this.runOnUiThread(new Runnable() {
@@ -315,9 +306,9 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
             public void run() {
                 mActivity.runOnUiThread(new Runnable() {
                     @Override
-                    public void run() {
-                        mAdapter.add(deviceFound);
-                        mAdapter.notifyDataSetChanged();
+                    public void run()
+                    {
+                        mAdapter.addElement(beanDeviceFound);
 
                         if (Constant.DEBUG)
                             Log.i(Constant.TAG, "ScanActivity -- addNewDevice2MySimpleArrayAdapter() -> Added new device "
@@ -327,35 +318,4 @@ public class ScanActivity extends ListActivity implements OnItemClickListener{ /
             }
         });
     }
-    /*
-    @Override
-    public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord)
-    {
-        String name="unknown";
-
-        if (device.getName()!=null)
-            name=device.getName();
-
-        final String finalName = name;
-        final String  finalAddress = device.getAddress();
-
-        if (Constant.DEBUG)
-            Log.i(Constant.TAG, "Found new device "+ finalAddress + " --- Name: " + finalName);
-
-        final BluetoothDevice finalDevice= device;
-        // This callback from Bluetooth LEScan can arrive at any moment not necessarily on UI thread.
-        // Use this mechanism to update list View
-        mActivity.runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        mAdapter.add(finalDevice);
-                                        mAdapter.notifyDataSetChanged();
-
-                                        if (Constant.DEBUG)
-                                            Log.i(Constant.TAG, "Added new device "+ finalAddress + " --- Name: " + finalName);
-                                    }
-                                }
-        );
-    }*/
-
 }

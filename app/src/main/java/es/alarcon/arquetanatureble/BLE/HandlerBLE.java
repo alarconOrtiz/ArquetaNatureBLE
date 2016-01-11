@@ -4,14 +4,18 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothAdapter.LeScanCallback;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import es.alarcon.arquetanatureble.BEAN.BeanBluetoothDevice;
+import es.alarcon.arquetanatureble.CORE.ServiceDetectionTag;
 import es.alarcon.arquetanatureble.UTIL.Constant;
 
 
@@ -21,11 +25,7 @@ import es.alarcon.arquetanatureble.UTIL.Constant;
 
 public class HandlerBLE implements LeScanCallback
 {
-    public static final String ACTION_DEVICE_ADVERTISING      = "es.alarcon.arquetanatureble.DEVICE_FOUND";
-    public static final String ACTION_DEVICE_ADVERTISING_DATA = "es.alarcon.arquetanatureble.ADVERTISING_DATA";
-
-    public static final int SELECT_ACTION_DEVICE_ADVERTISING         = 0;
-    public static final int SELECT_ACTION_DEVICE_ADVERTISING_DATA    = 1;
+    public static final String ACTION_BLE_FOUND            = "es.alarcon.arquetanatureble.BLE_FOUND";
 
     private static HandlerBLE mHandlerBLE;
     private static List<ServiceType> mServices;
@@ -35,7 +35,6 @@ public class HandlerBLE implements LeScanCallback
     private static String mDeviceAddress;
     private static BluetoothGatt mGatt;
     private static BluetoothAdapter mBlueAdapter = null;
-    private static int mselecActionDevice;
 
     public static boolean isScanning = false;
 
@@ -44,42 +43,37 @@ public class HandlerBLE implements LeScanCallback
     //###################################################################
     public HandlerBLE(Context context)
     {
-        mselecActionDevice = -1;
-        mContext = context;
-        mDeviceAddress= null;
-        mCallBack = new MyCallBack(context, this);
-
+        mContext        = context;
+        mDeviceAddress  = null;
+        mServices       = new ArrayList<ServiceType>();
+        mCallBack       = new MyCallBack(context, this);
     }
 
     //###################################################################
     /****************** Getters & setters          **********************/
     //###################################################################
-    public static int getMselecActionDevice() {
-        return mselecActionDevice;
-    }
 
-    public static void setMselecActionDevice(int mselecActionDevice) {
-        HandlerBLE.mselecActionDevice = mselecActionDevice;
-    }
-
-    public void setDeviceAddress(String address) {
-        mDeviceAddress=address;
-    }
-
-    public String getDeviceAddress() {
-        return mDeviceAddress;
-    }
-
-    public void setGatt(BluetoothGatt gatt)
-    {
-        mGatt = gatt;
-    }
-
+    public MyCallBack getMyCallBack() {return mCallBack;}
     public List<ServiceType> getServices()
     {
         return mServices;
     }
 
+    public ServiceType getService(UUID uuid)
+    {
+        for (ServiceType service:mServices)
+        {
+            if(service.getService().getUuid().toString().equals(uuid.toString()))
+                return service;
+        }
+        return null;
+    }
+    public void addService(ServiceType serviceType)
+    {
+        mServices.add(serviceType);
+    }
+    public void setGatt(BluetoothGatt gatt){mGatt = gatt;}
+    public BluetoothGatt getGatt(){return mGatt;}
     //###################################################################
     /*********************  statics methods   **************************/
     //###################################################################
@@ -93,7 +87,6 @@ public class HandlerBLE implements LeScanCallback
 
     public static void  resetHandlerBLE()
     {
-        mselecActionDevice = -1;
         mDeviceAddress     = null;
         mGatt              = null;
         if (mServices!=null) mServices.clear();
@@ -157,7 +150,8 @@ public class HandlerBLE implements LeScanCallback
     //###################################################################
     /********************* methods GATT bluetooth          *************/
     //###################################################################
-    public void discoverServices() {
+    public void discoverServices()
+    {
         if (Constant.DEBUG)
             Log.i(Constant.TAG, "(HandlerBLE)Scanning services and caracteristics");
         mGatt.discoverServices();
@@ -175,20 +169,43 @@ public class HandlerBLE implements LeScanCallback
             mDevice.connectGatt(mContext, false, mCallBack);
         }
     }
-    public static void disconnect(){
-        if (mGatt!=null) {
-            try{
+
+    public void connect(Context context, MyCallBack callBack,String deviceAddress)
+    {
+        mDevice = mBlueAdapter.getRemoteDevice(deviceAddress);
+        mDevice.connectGatt(context, false, callBack);
+    }
+
+    public static void disconnect()
+    {
+        if (mGatt!=null)
+        {
+            try
+            {
                 mGatt.disconnect();
                 mGatt.close();
                 if (Constant.DEBUG)
                     Log.i(Constant.TAG, "(HandlerBLE)Disconnecting GATT");
-            } catch(Exception ex){}
+            } catch(Exception ex)
+            {
+                if (Constant.DEBUG)
+                    Log.i(Constant.TAG, "(HandlerBLE) Error disconnecting :"+ex.getMessage());
+            }
         }
         mGatt = null;
     }
 
     public boolean isConnected(){
         return (mGatt!=null);
+    }
+
+    public void getDataFromSensors()
+    {
+        if(mCallBack != null && mGatt != null)
+        {
+            mCallBack.resetStateMachine();
+            mCallBack.readDataFromSensor(mGatt);
+        }
     }
 
     //###################################################################
@@ -203,28 +220,21 @@ public class HandlerBLE implements LeScanCallback
         if(Constant.DEBUG)
             Log.i(Constant.TAG,"(HandlerBLE) -- onLeScan -> throwing information to the listener.");
 
-        //create the packet wich will be sent to listener.
-        Intent intent = new Intent();
-
-        switch (mselecActionDevice)
-        {
-            case SELECT_ACTION_DEVICE_ADVERTISING:
-                intent.setAction(HandlerBLE.ACTION_DEVICE_ADVERTISING);
-                break;
-            case SELECT_ACTION_DEVICE_ADVERTISING_DATA:
-                intent.setAction(HandlerBLE.ACTION_DEVICE_ADVERTISING_DATA);
-                break;
-            default:
-                intent.setAction(HandlerBLE.ACTION_DEVICE_ADVERTISING);
-                break;
-        }
-
         BeanBluetoothDevice beanBlue = new BeanBluetoothDevice();
         beanBlue.setBluetoothDevice(device);
         beanBlue.setmRssi(rssi);
         beanBlue.setmScanRecord(scanRecord);
 
+        //create the packet wich will be sent to listener.
+        Intent intent = new Intent();
+        intent.setAction(HandlerBLE.ACTION_BLE_FOUND);
         intent.putExtra(Constant.EXTRA_BEAN_BLUETOOTHDEVICE,beanBlue);
         mContext.sendBroadcast(intent);
+
+        //listener in background
+        Intent newIntent = new Intent();
+        newIntent.setAction(ServiceDetectionTag.ServiceBroadcastReceiver.ACTION_NOTIFY_NEW_DEVICE_FOUND);
+        newIntent.putExtra(Constant.EXTRA_BEAN_BLUETOOTHDEVICE,beanBlue);
+        mContext.sendBroadcast(newIntent);
     }
 }

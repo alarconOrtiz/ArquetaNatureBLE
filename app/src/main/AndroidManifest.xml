@@ -3,7 +3,6 @@
     package="es.alarcon.arquetanatureble" >
 
     <uses-sdk
-        android:maxSdkVersion="19"
         android:minSdkVersion="19"
         android:targetSdkVersion="19" />
 
@@ -26,24 +25,26 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
-        <service android:name=".CORE.ServiceDetectionTag" />
+
+        <service android:name=".CORE.ServiceDetectionTag"
+                 android:process=":Nature_ScannerBLE"/>
 
         <activity
             android:name=".GUI.ScanActivity"
             android:label="@string/app_name"
-            android:parentActivityName=".GUI.ScanActivity"
             android:screenOrientation="portrait" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
             android:name=".GUI.DeviceActivity"
             android:label="@string/title_activity_sensor"
             android:screenOrientation="portrait" >
         </activity>
+
         <activity
             android:name=".GUI.ResumenActivity"
             android:label="@string/title_activity_resumen"
@@ -55,6 +56,7 @@
             android:label="@string/title_activity_outside_chamber"
             android:screenOrientation="portrait">
         </activity>
+
         <activity
             android:name=".GUI.InsideChamberActivity"
             android:label="@string/title_activity_inside_chamber"
@@ -62,13 +64,10 @@
         </activity>
 
         <receiver
-            android:name=".BroadCastReceiver.BLEBroadcastReceiver"
+            android:name=".BLE.BLEBroadcastReceiver"
             android:enabled="true" >
             <intent-filter>
                 <action android:name="es.alarcon.arquetanatureble.DEVICE_FOUND" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="es.alarcon.arquetanatureble.ADVERTISING_DATA" />
             </intent-filter>
         </receiver>
 
@@ -79,5 +78,6 @@
                 <action android:name="es.alarcon.arquetanatureble.NOTIFY_NEW_DEVICE" />
             </intent-filter>
         </receiver>
+
     </application>
 </manifest>

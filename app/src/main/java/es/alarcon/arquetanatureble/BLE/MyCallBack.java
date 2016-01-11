@@ -11,7 +11,9 @@ import android.content.Intent;
 import android.util.Log;
 
 import java.util.List;
+import java.util.UUID;
 
+import es.alarcon.arquetanatureble.GUI.DeviceActivity;
 import es.alarcon.arquetanatureble.UTIL.Constant;
 
 /**
@@ -19,56 +21,101 @@ import es.alarcon.arquetanatureble.UTIL.Constant;
  */
 public class MyCallBack extends BluetoothGattCallback {
 
+
     private HandlerBLE mHandlerBLE;
     private Context mContext;
+    // State machine
+    private int mState;
+    private boolean nextSensor;
 
     public MyCallBack(Context mContext, HandlerBLE mHandlerBLE)
     {
         this.mContext    = mContext;
         this.mHandlerBLE = mHandlerBLE;
+        mState           = 0;
+        nextSensor       = true;
     }
 
-    @Override
-    public void onConnectionStateChange(BluetoothGatt gatt, int status,
-                                        int newState) {
-        super.onConnectionStateChange(gatt, status, newState);
+    protected void resetStateMachine()
+    {
+        mState           = 0;
+        nextSensor       = true;
+    }
 
+    protected void sendBroadCast(Context context,String action,String parameter,byte [] value)
+    {
+        Intent broadcastIntent = new Intent();
+        broadcastIntent.setAction(action);
+        broadcastIntent.putExtra(parameter, value);
+        context.sendBroadcast(broadcastIntent);
+    }
+
+    protected void advanceStateMachine()
+    {
+        mState++;
+    }
+
+    protected void readDataFromSensor(BluetoothGatt gatt)
+    {
+
+        BluetoothGattCharacteristic characteristic;
+        //BluetoothGattService service = new BluetoothGattService(ServiceData.CHAMBER_SERVICE
+        //        ,BluetoothGattService.SERVICE_TYPE_PRIMARY);
+
+        BluetoothGattService service = mHandlerBLE.getService(ServiceData.CHAMBER_SERVICE).getService();
+
+        switch (mState)
+        {
+            case 0:
+                characteristic = service.getCharacteristic(ServiceData.FLOWMETER_CHARACTERISTIC);
+                break;
+            case 1:
+                characteristic = service.getCharacteristic(ServiceData.PRESSURE_CHARACTERISTIC);
+                break;
+            case 2:
+                characteristic = service.getCharacteristic(ServiceData.VALVE_CHARACTERISTIC);
+                nextSensor     = false;
+                break;
+            default:
+                return;
+        }
+        gatt.readCharacteristic(characteristic);
+    }
+    @Override
+    public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+        super.onConnectionStateChange(gatt, status, newState);
 
         if(Constant.DEBUG){
             if (status!=0) {
-                Log.i(Constant.TAG, "Error status received onConnectionStateChange: " + status + " - New state: " + newState);
+                Log.i(Constant.TAG, "MyCallBack -- Error status received onConnectionStateChange: " + status + " - Newstate: " + newState);
             } else {
-                Log.i(Constant.TAG, "onConnectionStateChange received. status = " + status +
-                        " - State: " + newState);
+                Log.i(Constant.TAG, "MyCallBack -- onConnectionStateChange received. status = " + status +
+                        " - NewState: " + newState);
             }
         }
-
-        if ((status==133)||(status==257)) {
-            if(Constant.DEBUG)
-                Log.i(Constant.TAG, "Unrecoverable error 133 or 257. DEVICE_DISCONNECTED intent broadcast with full reset");
-            Intent intent = new Intent();
-            mContext.sendBroadcast(intent);
+        if(status != BluetoothGatt.GATT_SUCCESS)
+        {
+            gatt.disconnect();
             return;
         }
 
-        if (newState== BluetoothProfile.STATE_CONNECTED&&status==BluetoothGatt.GATT_SUCCESS){ //Connected
+        //Connection established
+        if (newState == BluetoothProfile.STATE_CONNECTED) {
+
+            if(Constant.DEBUG)
+                Log.i(Constant.TAG, "MyCallBack -- onConnectionStateChange -- discovering services.");
+
             mHandlerBLE.setGatt(gatt);
-            if(Constant.DEBUG)
-                Log.i(Constant.TAG, "New connected Device. DEVICE_CONNECTED intent broadcast");
-            Intent intent = new Intent();
-            mContext.sendBroadcast(intent);
-            return;
+            //Discover services
+            //gatt.discoverServices();
+            mHandlerBLE.discoverServices();
+
+        } else if (newState == BluetoothProfile.STATE_DISCONNECTED)
+        {
+            //Handle a disconnect event
+            Log.d(Constant.TAG,"MyCallBack -- onConnectionStateChange -- device disconnecting.");
         }
 
-        if (newState==BluetoothProfile.STATE_DISCONNECTED&&status==BluetoothGatt.GATT_SUCCESS){ //Connected
-            if(Constant.DEBUG)
-                Log.i(Constant.TAG, "Disconnected Device. DEVICE_DISCONNECTED intent broadcast");
-            Intent intent = new Intent();
-            mContext.sendBroadcast(intent);
-            return;
-        }
-        if(Constant.DEBUG)
-            Log.i(Constant.TAG, "Unknown values received onConnectionStateChange. Status: " + status + " - New state: " + newState);
     }
 
 
@@ -79,82 +126,131 @@ public class MyCallBack extends BluetoothGattCallback {
 
 
     @Override
-    public void onCharacteristicWrite(BluetoothGatt gatt,
-                                      BluetoothGattCharacteristic characteristic, int status) {
+    public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
         super.onCharacteristicWrite(gatt, characteristic, status);
-        if(Constant.DEBUG){
-            if(status==0){
-                Log.i(Constant.TAG, "Write success ,characteristic uuid=:"+characteristic.getUuid().toString());
-            }else{
-                Log.i(Constant.TAG, "Write fail ,characteristic uuid=:"+characteristic.getUuid().toString()+" status="+status);
-            }
-        }
-        Intent intent = new Intent();
-        mContext.sendBroadcast(intent);
     }
 
 
     @Override
-    public void onCharacteristicRead(BluetoothGatt gatt,
-                                     BluetoothGattCharacteristic characteristic, int status) {
+    public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
         super.onCharacteristicRead(gatt, characteristic, status);
-        if(Constant.DEBUG) {
-            if(status==0){
-                //Log.i(Constant.TAG, "Read from:"+characteristic.getUuid().toString()+" value: "+ bytesToString(characteristic.getValue()));
-            } else {
-                Log.i(Constant.TAG, "Read fail ,characteristic uuid=:"+characteristic.getUuid().toString()+" status="+status);
-            }
+
+        String uuid_charac = characteristic.getUuid().toString();
+        byte[] value = characteristic.getValue();
+
+        if(Constant.DEBUG)
+            Log.i(Constant.TAG, "MyCallBack -- onCharacteristicRead: " + uuid_charac);
+
+        if(uuid_charac.equals(ServiceData.FLOWMETER_CHARACTERISTIC.toString()))
+        {
+            //to send the information UI.
+            sendBroadCast(mContext, DeviceActivity.BroadcasterDataSensor.DATA_FLOW_ACT
+                    ,Constant.MSG_FLOW,value);
         }
-        Intent intent = new Intent();
-        mContext.sendBroadcast(intent);
+        else if(uuid_charac.equals(ServiceData.PRESSURE_CHARACTERISTIC.toString()))
+        {
+            sendBroadCast(mContext,DeviceActivity.BroadcasterDataSensor.DATA_PRESSU_ACT
+                    ,Constant.MSG_PRESSU,value);
+        }
+        else if (uuid_charac.equals(ServiceData.VALVE_CHARACTERISTIC.toString()))
+        {
+            sendBroadCast(mContext,DeviceActivity.BroadcasterDataSensor.DATA_VALVE_ACT
+                    ,Constant.MSG_VALVE,value);
+        }
+        else
+        {
+            sendBroadCast(mContext,DeviceActivity.BroadcasterDataSensor.DATA_UNKNOWN_ACT
+                    ,Constant.MSG_UNKNOWN,value);
+        }
+
+        if(nextSensor)
+        {
+            advanceStateMachine();
+            readDataFromSensor(mHandlerBLE.getGatt());
+        }
     }
 
 
     @Override
-    public void onCharacteristicChanged(BluetoothGatt gatt,
-                                        BluetoothGattCharacteristic characteristic) {
+    public void onCharacteristicChanged(BluetoothGatt gatt,BluetoothGattCharacteristic characteristic) {
         super.onCharacteristicChanged(gatt, characteristic);
-        if(Constant.DEBUG){
-            //Log.i(Constant.TAG, "NOTIFICATION onCharacteristicChanged for characteristic " + uuid +
-            //		" value: " + bytesToString(characteristic.getValue()));
+
+        String uuid_charac = characteristic.getUuid().toString();
+        byte[] value = characteristic.getValue();
+
+        if(Constant.DEBUG)
+            Log.i(Constant.TAG, "MyCallBack -- onCharacteristicChanged: " + uuid_charac);
+
+        if(uuid_charac.equals(ServiceData.FLOWMETER_CHARACTERISTIC.toString()))
+        {
+            //to send the information UI.
+            sendBroadCast(mContext, DeviceActivity.BroadcasterDataSensor.DATA_FLOW_ACT
+                    ,Constant.MSG_FLOW,value);
         }
-        Intent intent = new Intent();
-        mContext.sendBroadcast(intent);
+        else if(uuid_charac.equals(ServiceData.PRESSURE_CHARACTERISTIC.toString()))
+        {
+            sendBroadCast(mContext,DeviceActivity.BroadcasterDataSensor.DATA_PRESSU_ACT
+                    ,Constant.MSG_PRESSU,value);
+        }
+        else if (uuid_charac.equals(ServiceData.VALVE_CHARACTERISTIC.toString()))
+        {
+            sendBroadCast(mContext,DeviceActivity.BroadcasterDataSensor.DATA_VALVE_ACT
+                    ,Constant.MSG_VALVE,value);
+        }
     }
 
 
     @Override
     public void  onServicesDiscovered(BluetoothGatt gatt, int status) {
         super.onServicesDiscovered(gatt, status);
-        if(Constant.DEBUG)
-            Log.i(Constant.TAG, "onServicesDiscovered status: " + status);
 
-        for(BluetoothGattService serviceInList: gatt.getServices()){
-            String serviceUUID=serviceInList.getUuid().toString();
-            ServiceType serviceType=new ServiceType(serviceInList);
-            List<BluetoothGattCharacteristic> characteristics= serviceType.getCharacteristics();
+        //adding new services
+        if(Constant.DEBUG)
+            Log.i(Constant.TAG, "MyCallBack -- onServicesDiscovered status: " + status);
+
+        String serviceUUID;
+        ServiceType serviceType;
+        List<BluetoothGattCharacteristic> characteristics;
+        for(BluetoothGattService serviceInList: gatt.getServices())
+        {
+            serviceUUID = serviceInList.getUuid().toString();
+            serviceType = new ServiceType(serviceInList);
+            characteristics = serviceType.getCharacteristics();
+
             if(Constant.DEBUG)
-                Log.i(Constant.TAG, "New service: " + serviceUUID);
-            for(BluetoothGattCharacteristic characteristicInList : serviceInList.getCharacteristics()){
+                Log.i(Constant.TAG, "MyCallBack -- onServicesDiscovered -- New service: " + serviceUUID);
+
+            for(BluetoothGattCharacteristic characteristicInList : serviceInList.getCharacteristics())
+            {
                 if(Constant.DEBUG)
-                    Log.i(Constant.TAG, "New characteristic: " + characteristicInList.getUuid().toString());
+                    Log.i(Constant.TAG, "MyCallBack -- onServicesDiscovered -- New characteristic: " + characteristicInList.getUuid().toString());
                 characteristics.add(characteristicInList);
             }
-            mHandlerBLE.getServices().add(serviceType);
+
+            serviceType.setCharacteristics(characteristics);
+            mHandlerBLE.addService(serviceType);
+
+            characteristics.clear();
         }
-        Intent intent = new Intent();
-        mContext.sendBroadcast(intent);
+
+        ///////////////////////////////////
+        //ServiceType serviceType1 =  mHandlerBLE.getService(ServiceData.CHAMBER_SERVICE);
+        //for(BluetoothGattCharacteristic characteristicInList : serviceType1.getService().getCharacteristics())
+        //{
+        //    if(Constant.DEBUG)
+        //        Log.i(Constant.TAG, "MyCallBack -- test -- service characteristic: " + characteristicInList.getUuid().toString());
+        //
+        //}
+        ///////////////////////////////////
+
+        resetStateMachine();
+        readDataFromSensor(gatt);
     }
 
 
     @Override
-    public void onDescriptorWrite(BluetoothGatt gatt,
-                                  BluetoothGattDescriptor descriptor, int status) {
+    public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
         super.onDescriptorWrite(gatt, descriptor, status);
-        if(Constant.DEBUG)
-            Log.i(Constant.TAG, "onDescriptorWrite "+ descriptor.getUuid().toString() + " - characteristic: " +
-                    descriptor.getCharacteristic().getUuid().toString() + " - Status: " + status);
-        Intent intent = new Intent();
-        mContext.sendBroadcast(intent);
     }
+
 }

@@ -1,16 +1,12 @@
-package es.alarcon.arquetanatureble.DB;
+package es.alarcon.arquetanatureble.DB_SQLITE;
 
 import android.os.AsyncTask;
-import android.os.ParcelUuid;
 import android.util.Log;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.List;
 
-import es.alarcon.arquetanatureble.BEAN.AdRecord;
+import es.alarcon.arquetanatureble.BLE.AdRecord;
 import es.alarcon.arquetanatureble.BEAN.BeanBluetoothDevice;
-import es.alarcon.arquetanatureble.DB.ChamberDB;
 import es.alarcon.arquetanatureble.GUI.DeviceActivity;
 import es.alarcon.arquetanatureble.UTIL.Constant;
 

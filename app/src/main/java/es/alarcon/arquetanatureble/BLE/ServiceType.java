@@ -13,11 +13,16 @@ public class ServiceType {
     private BluetoothGattService mService;
     private List<BluetoothGattCharacteristic> mCharacteristics;
 
-    ServiceType(BluetoothGattService service) {
+    ServiceType(BluetoothGattService service)
+    {
         mService = service;
         mCharacteristics= new ArrayList<BluetoothGattCharacteristic>();
     }
 
     public BluetoothGattService getService() {return mService;}
     public List<BluetoothGattCharacteristic> getCharacteristics () {return mCharacteristics;}
+    public void setCharacteristics(List<BluetoothGattCharacteristic> characteristicList)
+    {
+        mCharacteristics = characteristicList;
+    }
 }

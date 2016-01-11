@@ -1,14 +1,8 @@
-package es.alarcon.arquetanatureble.BEAN;
+package es.alarcon.arquetanatureble.BLE;
 
-import android.text.TextUtils;
-import android.util.Log;
-
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import es.alarcon.arquetanatureble.UTIL.Constant;
 
 /**
  * Created by alarcon on 5/8/15.
@@ -32,7 +26,6 @@ public class AdRecord {
     public static final int TYPE_APPEARANCE                         = 0x19; /**< \ref Appearance */
     public static final int TYPE_ADVERTISING_INTERVAL               = 0x1A; /**< Advertising Interval */
     public static final int TYPE_MANUFACTURER_SPECIFIC_DATA         = 0xFF;  /**< Manufacturer Specific Data */
-
 
 
     /*
